@@ -1,13 +1,11 @@
 ﻿Option Explicit On
 Option Strict On
 
-
 ' El manejo de los "components": los detecta y los salta: si encuentra un "Component", no los pone en el oDictionary.
 ' Aunque salte el Component, entra a mirar qué tiene dentro, si adentro hay piezas reales, las trata normalmente.
 
 ' Links rotos: si el link de una pieza está roto, lo detecta porque al intentar acceder al documento de la referencia, lanza un error.
 ' Tiene un bloque try-catch para detectar si el link está roto. Si lo está, avisa por consola y omite ese elemento.
-
 
 
 Public Class CatiaDataExtractor
@@ -35,7 +33,7 @@ Public Class CatiaDataExtractor
             .Source = oRootProduct.Source
             .Level = 0
             .FileName = rootDoc.Name
-            .FullPath = GetJustDirectory(rootDoc.FullName) ' <--- MODIFICADO
+            .FullPath = GetJustDirectory(rootDoc.FullName)
             .ImageFilePath = If(takeSnaps, TakeSnapshot(oRootProduct, folderPath, True), "")
         End With
 
@@ -90,7 +88,6 @@ Public Class CatiaDataExtractor
                             .Level = currentLevel
                             .FileName = oChildDoc.Name
                             .FullPath = GetJustDirectory(oChildDoc.FullName)
-                            ' Solo tomamos snapshot si el link no está roto (ya validado arriba)
                             .ImageFilePath = If(takeSnaps, TakeSnapshot(oChild, folderPath, False), "")
                         End With
                         oDictionary.Add(pNumber, PP)
