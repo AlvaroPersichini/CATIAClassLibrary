@@ -64,6 +64,8 @@
     <Import Include="System.Threading.Tasks" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CatiaCOMCleaner.vb" />
+    <Compile Include="CatiaDataInjector.vb" />
     <Compile Include="CatiaSession.vb" />
     <Compile Include="CatiaDataExtractor.vb" />
     <Compile Include="My Project\AssemblyInfo.vb" />
