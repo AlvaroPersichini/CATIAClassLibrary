@@ -7,13 +7,25 @@ Option Strict On
 ' Links rotos: si el link de una pieza está roto, lo detecta porque al intentar acceder al documento de la referencia, lanza un error.
 ' Tiene un bloque try-catch para detectar si el link está roto. Si lo está, avisa por consola y omite ese elemento.
 
+' La clase trabaja con un diccionario que usa tipos nativos de VB.NET para almacenar la información.
+' No usa "ProductStructureTypeLib.Product".Esto  evita problemas de compatibilidad.
 
 
 Public Class CatiaDataExtractor
 
     Public Function ExtractData(oRootProduct As ProductStructureTypeLib.Product,
-                                folderPath As String,
-                                takeSnaps As Boolean) As Dictionary(Of String, (FullPath As String, FileName As String, ImageFilePath As String, Product As ProductStructureTypeLib.Product, Quantity As Integer, Level As Integer, ProductType As String, Source As ProductStructureTypeLib.CatProductSource))
+                            folderPath As String,
+                            takeSnaps As Boolean) As Dictionary(Of String, (FullPath As String,
+                                                                           FileName As String,
+                                                                           ImageFilePath As String,
+                                                                           PartNumber As String,
+                                                                           DescriptionRef As String,
+                                                                           Nomenclature As String,
+                                                                           Definition As String,
+                                                                           Quantity As Integer,
+                                                                           Level As Integer,
+                                                                           ProductType As String,
+                                                                           Source As Integer))
 
         Console.WriteLine("[" & DateTime.Now.ToString("HH:mm:ss") & "] - Extracting data from CATIA...")
 
@@ -21,33 +33,67 @@ Public Class CatiaDataExtractor
             If Not IO.Directory.Exists(folderPath) Then IO.Directory.CreateDirectory(folderPath)
         End If
 
-        Dim oDictionary As New Dictionary(Of String, (FullPath As String, FileName As String, ImageFilePath As String, Product As ProductStructureTypeLib.Product, Quantity As Integer, Level As Integer, ProductType As String, Source As ProductStructureTypeLib.CatProductSource))
+        Dim oDictionary As New Dictionary(Of String, (FullPath As String,
+                                                  FileName As String,
+                                                  ImageFilePath As String,
+                                                  PartNumber As String,
+                                                  DescriptionRef As String,
+                                                  Nomenclature As String,
+                                                  Definition As String,
+                                                  Quantity As Integer,
+                                                  Level As Integer,
+                                                  ProductType As String,
+                                                  Source As Integer))
+
+
         Dim rootDoc As INFITF.Document = CType(oRootProduct.ReferenceProduct.Parent, INFITF.Document)
 
-        oDictionary.Add(oRootProduct.PartNumber, (
-            FullPath:=GetJustDirectory(rootDoc.FullName),
-            FileName:=rootDoc.Name,
-            ImageFilePath:=If(takeSnaps, TakeSnapshot(oRootProduct, folderPath, True), ""),
-            Product:=oRootProduct,
-            Quantity:=1,
-            Level:=0,
-            ProductType:=TypeName(rootDoc),
-            oRootProduct.Source
-        ))
+
+        oDictionary.Add(oRootProduct.PartNumber,
+                        (FullPath:=GetJustDirectory(rootDoc.FullName),
+                        FileName:=rootDoc.Name,
+                        ImageFilePath:=If(takeSnaps, TakeSnapshot(oRootProduct, folderPath, True), ""),
+                        oRootProduct.PartNumber,
+                        oRootProduct.DescriptionRef,
+                        oRootProduct.Nomenclature,
+                        oRootProduct.Definition,
+                        Quantity:=1,
+                        Level:=0,
+                        ProductType:=TypeName(rootDoc),
+                        Source:=CInt(oRootProduct.Source)))
+
+        ' seguir viendo el tema del source, porque 
+        ' en el diccionario lo estamos guardando como Integer,
+        ' pero en realidad es un enum CatProductSource.
+        ' Source As ProductStructureTypeLib.CatProductSource))
+
 
         ProcesarHijosRecursivo(oRootProduct, oDictionary, 1, folderPath, takeSnaps, rootDoc)
 
         Return oDictionary
+
     End Function
 
 
 
+
+
     Private Sub ProcesarHijosRecursivo(oParent As ProductStructureTypeLib.Product,
-                                      ByRef oDictionary As Dictionary(Of String, (FullPath As String, FileName As String, ImageFilePath As String, Product As ProductStructureTypeLib.Product, Quantity As Integer, Level As Integer, ProductType As String, Source As ProductStructureTypeLib.CatProductSource)),
-                                      ByVal currentLevel As Integer,
-                                      folderPath As String,
-                                      takeSnaps As Boolean,
-                                      oParentDoc As INFITF.Document)
+                                       ByRef oDictionary As Dictionary(Of String,
+                                       (FullPath As String,
+                                       FileName As String,
+                                       ImageFilePath As String,
+                                       PartNumber As String,
+                                       DescriptionRef As String,
+                                       Nomenclature As String,
+                                       Definition As String,
+                                       Quantity As Integer,
+                                       Level As Integer,
+                                       ProductType As String,
+                                       Source As Integer)), ByVal currentLevel As Integer,
+                                       folderPath As String,
+                                       takeSnaps As Boolean,
+                                       oParentDoc As INFITF.Document)
 
         For Each oChild As ProductStructureTypeLib.Product In oParent.Products
 
@@ -56,7 +102,7 @@ Public Class CatiaDataExtractor
             Try
                 oChildDoc = CType(oChild.ReferenceProduct.Parent, INFITF.Document)
             Catch ex As Exception
-                Console.WriteLine(" ALERTA: Link roto detectado en '" & oChild.Name & "'. Se omitirá este elemento.")
+                Console.WriteLine(" Broken Link '" & oChild.Name & "'. This element will be skipped.")
                 Continue For
             End Try
 
@@ -76,16 +122,18 @@ Public Class CatiaDataExtractor
                         item.Quantity += 1
                         oDictionary(pNumber) = item
                     Else
-                        oDictionary.Add(pNumber, (
-                            FullPath:=GetJustDirectory(oChildDoc.FullName),
-                            FileName:=oChildDoc.Name,
-                            ImageFilePath:=If(takeSnaps, TakeSnapshot(oChild, folderPath, False), ""),
-                            Product:=oChild,
-                            Quantity:=1,
-                            Level:=currentLevel,
-                            ProductType:=TypeName(oChildDoc),
-                            oChild.Source
-                        ))
+                        oDictionary.Add(pNumber,
+                                        (FullPath:=GetJustDirectory(oChildDoc.FullName),
+                                        FileName:=oChildDoc.Name,
+                                        ImageFilePath:=If(takeSnaps, TakeSnapshot(oChild, folderPath, False), ""),
+                                        oChild.PartNumber,
+                                        oChild.DescriptionRef,
+                                        oChild.Nomenclature,
+                                        oChild.Definition,
+                                        Quantity:=1,
+                                        Level:=currentLevel,
+                                        ProductType:=TypeName(oChildDoc),
+                                        Source:=CInt(oChild.Source)))
                     End If
 
                 End If
@@ -97,7 +145,10 @@ Public Class CatiaDataExtractor
             End If
 
         Next
+
     End Sub
+
+
 
     Private Function TakeSnapshot(oProd As ProductStructureTypeLib.Product, folder As String, isRoot As Boolean) As String
         Dim safePartNumber As String = CleanFileName(oProd.PartNumber)
